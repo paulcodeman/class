@@ -4,8 +4,7 @@ const DataType = {
     WORD: 2,
     DWORD: 4,
     INT: -4,
-    STR: 5,
-    PTR: 6,
+    STR: 5
 };
 
 class BinaryParser {
