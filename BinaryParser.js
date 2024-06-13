@@ -4,7 +4,9 @@ const DataType = {
     WORD: 2,
     DWORD: 4,
     INT: -4,
-    STR: 5
+    I16: -2,
+    STR: 5,
+    HEX: 6
 };
 
 class BinaryParser {
@@ -24,15 +26,43 @@ class BinaryParser {
         for (let [key, type] of Object.entries(structure)) {
             let value;
             const saveOffset = this.offset;
-            let isPointer = key.startsWith('#');
+            const isPointer = key.startsWith('#');
+            const match = key.match(/(?<key>[^:]+):(?<count>\d+)$/);
+            let count = 1;
+            let multiple = [];
+
+            if (match) {
+                key = match.groups.key;
+                count = 1*match.groups.count;
+            }
 
             if (isPointer) {
                 key = key.slice(1);
-                this.offset = this.data.getUint32(saveOffset, true);
-                value = typeof type === 'object' ? this.parseStructure(type) : this.parseValue(type);
-                this.offset = saveOffset;
+            }
+
+            if (count > 1) {
+                value = [];
+                if (isPointer) {
+                    this.offset = this.data.getUint32(saveOffset, true);
+                }
+                while(count--) {
+                    if (isPointer) {
+                        value[value.length] = typeof type === 'object' ? this.parseStructure(type) : this.parseValue(type);
+                    } else {
+                        value[value.length] = typeof type === 'object' ? this.parseStructure(type) : this.parseValue(type);
+                    }
+                }
+                if (isPointer) {
+                    this.offset = saveOffset + 4;
+                }
             } else {
-                value = typeof type === 'object' ? this.parseStructure(type) : this.parseValue(type);
+                if (isPointer) {
+                    this.offset = this.data.getUint32(saveOffset, true);
+                    value = typeof type === 'object' ? this.parseStructure(type) : this.parseValue(type);
+                    this.offset = saveOffset + 4;
+                } else {
+                    value = typeof type === 'object' ? this.parseStructure(type) : this.parseValue(type);
+                }
             }
 
             Object.defineProperty(result, key, {
@@ -50,8 +80,8 @@ class BinaryParser {
     }
 
     parseValue(type) {
-        if (this.offset + Math.abs(type) > this.data.byteLength) {
-            throw new RangeError("Offset is outside the bounds of the DataView");
+        if (typeof type === 'function') {
+            return type(this.data, this.offset);
         }
 
         let value;
@@ -78,6 +108,10 @@ class BinaryParser {
             case DataType.INT:
                 value = this.data.getInt32(this.offset, true);
                 this.offset += 4;
+                break;
+            case DataType.I16:
+                value = this.data.getInt16(this.offset, true);
+                this.offset += 2;
                 break;
             default:
                 throw new Error(`Unknown type: ${type}`);
@@ -122,6 +156,10 @@ class BinaryParser {
             case DataType.INT:
                 this.data.setInt32(this.offset, value, true);
                 this.offset += 4;
+                break;
+            case DataType.I16:
+                this.data.setInt16(this.offset, value, true);
+                this.offset += 2;
                 break;
             default:
                 throw new Error(`Unknown type: ${type}`);
