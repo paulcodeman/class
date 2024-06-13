@@ -6,7 +6,8 @@ const DataType = {
     INT: -4,
     I16: -2,
     STR: 5,
-    HEX6: 6
+    HEX6: 6,
+    COLOR: 7
 };
 
 class BinaryParser {
@@ -120,6 +121,12 @@ class BinaryParser {
                 value = value.padStart(6, '0')
                 this.offset += 4;
                 break;
+            case DataType.COLOR:
+                value = this.data.getUint32(this.offset, true);
+                value = value.toString(16);
+                value = '#' + value.padStart(6, '0')
+                this.offset += 4;
+                break;
             default:
                 throw new Error(`Unknown type: ${type}`);
         }
@@ -171,6 +178,11 @@ class BinaryParser {
                 break;
             case DataType.HEX6:
                 value = parseInt(value, 16);
+                this.data.setUint32(this.offset, value, true);
+                this.offset += 4;
+                break;
+            case DataType.COLOR:
+                value = parseInt(value.substring(1), 16);
                 this.data.setUint32(this.offset, value, true);
                 this.offset += 4;
                 break;
