@@ -6,15 +6,16 @@ const DataType = {
     INT: -4,
     I16: -2,
     STR: 5,
-    HEX: 6
+    HEX6: 6
 };
 
 class BinaryParser {
-    constructor(data, structure) {
+    constructor(data, structure, callback = null) {
         this.data = new DataView(data);
         this.structure = structure;
         this.offset = 0;
         this.parsedData = this.parseStructure(structure);
+        this.callback = callback;
     }
 
     parse() {
@@ -113,9 +114,16 @@ class BinaryParser {
                 value = this.data.getInt16(this.offset, true);
                 this.offset += 2;
                 break;
+            case DataType.HEX6:
+                value = this.data.getUint32(this.offset, true);
+                value = value.toString(16);
+                value = value.padStart(6, '0')
+                this.offset += 4;
+                break;
             default:
                 throw new Error(`Unknown type: ${type}`);
         }
+
         return value;
     }
 
@@ -161,8 +169,17 @@ class BinaryParser {
                 this.data.setInt16(this.offset, value, true);
                 this.offset += 2;
                 break;
+            case DataType.HEX6:
+                value = parseInt(value, 16);
+                this.data.setUint32(this.offset, value, true);
+                this.offset += 4;
+                break;
             default:
                 throw new Error(`Unknown type: ${type}`);
+        }
+
+        if (this.callback) {
+            this.callback(this.parsedData);
         }
     }
 }
